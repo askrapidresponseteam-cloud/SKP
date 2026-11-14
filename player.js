@@ -25,7 +25,9 @@ const playIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true
 const pauseIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>';
 function fullIcon(active) { return '<svg viewBox="0 0 24 24"><path d="' + (active ? 'M3 8h5V3m8 0v5h5M3 16h5v5m8 0v-5h5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5') + '"/></svg>'; }
 function miniIcon(expand) { return '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="' + (expand ? 'm8 14 8-6m-8 0h8v6' : 'M12 12h6v5h-6z') + '"/></svg>'; }
-function speakerIcon(muted) { return '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3Z' + (muted ? 'm4-1 6 6m0-6-6 6' : 'm4-6c3 2 3 6 0 8m3-11c5 4 5 10 0 14') + '"/></svg>'; }
+function speakerIcon(muted) {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/>' + (muted ? '<path d="m16 9 5 6m0-6-5 6"/>' : '<path d="M15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/>') + '</svg>';
+}
 function time(s) { s = Math.max(0, Math.floor(Number(s) || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0'); }
 const memory = { get(k) { try { return Number(localStorage.getItem(k)) || 0; } catch { return 0; } }, set(k, v) { try { v ? localStorage.setItem(k, String(v)) : localStorage.removeItem(k); } catch {} } };
 
@@ -49,9 +51,8 @@ cinemas.forEach(box => {
   minimize.type = 'button'; minimize.className = 'cinema-minimize'; minimize.innerHTML = miniIcon(false); minimize.setAttribute('aria-label', 'Minimize video and browse');
   q('.cinema-top').append(minimize);
   close.setAttribute('title', 'Close film'); minimize.setAttribute('title', 'Minimize and browse'); full.setAttribute('title', 'Toggle fullscreen');
-  const skipIcon = dir => '<svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (dir < 0 ? 'M5.78 6.68A8.8 8.8 0 1 1 3.20 12.9' : 'M18.22 6.68A8.8 8.8 0 1 0 20.80 12.9') + '"/><path d="' + (dir < 0 ? 'M5.78 2.78v3.9h3.9' : 'M18.22 2.78v3.9h-3.9') + '"/><text x="12" y="15.2" text-anchor="middle" font-size="6.3" font-weight="600" font-family="Arial,Helvetica,sans-serif" fill="currentColor" stroke="none">10</text></svg>';
-  back.innerHTML = skipIcon(-1);
-  forward.innerHTML = skipIcon(1);
+  const skipIcon = dir => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (dir < 0 ? 'M4 10a8 8 0 1 1 .8 6M4 4v6h6' : 'M20 10a8 8 0 1 0-.8 6M20 4v6h-6') + '"/></svg><span class="skip-count" aria-hidden="true">10</span>';
+  back.innerHTML = skipIcon(-1); forward.innerHTML = skipIcon(1);
   minimize.addEventListener('click', async () => {
     if ((document.fullscreenElement || document.webkitFullscreenElement) === box) {
       try { if (document.exitFullscreen) await document.exitFullscreen(); else document.webkitExitFullscreen(); } catch {}
