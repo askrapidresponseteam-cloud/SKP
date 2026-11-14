@@ -23,6 +23,9 @@ function loadAPI() {
 }
 const playIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 4 13 8-13 8Z"/></svg>';
 const pauseIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>';
+function fullIcon(active) { return '<svg viewBox="0 0 24 24"><path d="' + (active ? 'M3 8h5V3m8 0v5h5M3 16h5v5m8 0v-5h5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5') + '"/></svg>'; }
+function miniIcon(expand) { return '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="' + (expand ? 'm8 14 8-6m-8 0h8v6' : 'M12 12h6v5h-6z') + '"/></svg>'; }
+function speakerIcon(muted) { return '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3Z' + (muted ? 'm4-1 6 6m0-6-6 6' : 'm4-6c3 2 3 6 0 8m3-11c5 4 5 10 0 14') + '"/></svg>'; }
 function time(s) { s = Math.max(0, Math.floor(Number(s) || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0'); }
 const memory = { get(k) { try { return Number(localStorage.getItem(k)) || 0; } catch { return 0; } }, set(k, v) { try { v ? localStorage.setItem(k, String(v)) : localStorage.removeItem(k); } catch {} } };
 
@@ -36,13 +39,19 @@ cinemas.forEach(box => {
   let previousOverflow = '';
   const controls = q('.cinema-controls'), bar = document.createElement('div'), name = document.createElement('div'), transport = document.createElement('div'), clock = document.createElement('div');
   bar.className = 'cinema-reference-bar'; name.className = 'cinema-reference-title'; transport.className = 'cinema-reference-transport'; clock.className = 'cinema-reference-clock';
-  name.textContent = 'Sampath Shetty - Yashogathe';
+  name.innerHTML = '<span class="film-eyebrow">SKP FILMS / FOUNDER’S CORNER</span><strong>Sampath Shetty</strong><span class="film-subtitle">A journey of conviction</span>';
   clock.append(tNow, document.createTextNode(' / '), tAll);
-  transport.append(play, seek, clock); bar.append(name, transport, mute, full); controls.append(bar);
-  close.textContent = 'CLOSE'; full.textContent = 'Fullscreen';
+  transport.append(play, back, forward, clock); bar.append(seek, transport, mute, volume, full); controls.append(bar); q('.cinema-top').append(name);
+  close.innerHTML = '<svg viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></svg>'; full.innerHTML = fullIcon(false);
+  const tapLayer = document.createElement('div'); tapLayer.className = 'cinema-tap'; tapLayer.setAttribute('aria-hidden', 'true');
+  q('.cinema-screen').append(tapLayer);
   const minimize = document.createElement('button');
-  minimize.type = 'button'; minimize.className = 'cinema-minimize'; minimize.textContent = 'Minimize'; minimize.setAttribute('aria-label', 'Minimize video and browse');
+  minimize.type = 'button'; minimize.className = 'cinema-minimize'; minimize.innerHTML = miniIcon(false); minimize.setAttribute('aria-label', 'Minimize video and browse');
   q('.cinema-top').append(minimize);
+  close.setAttribute('title', 'Close film'); minimize.setAttribute('title', 'Minimize and browse'); full.setAttribute('title', 'Toggle fullscreen');
+  const skipIcon = dir => '<svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (dir < 0 ? 'M5.78 6.68A8.8 8.8 0 1 1 3.20 12.9' : 'M18.22 6.68A8.8 8.8 0 1 0 20.80 12.9') + '"/><path d="' + (dir < 0 ? 'M5.78 2.78v3.9h3.9' : 'M18.22 2.78v3.9h-3.9') + '"/><text x="12" y="15.2" text-anchor="middle" font-size="6.3" font-weight="600" font-family="Arial,Helvetica,sans-serif" fill="currentColor" stroke="none">10</text></svg>';
+  back.innerHTML = skipIcon(-1);
+  forward.innerHTML = skipIcon(1);
   minimize.addEventListener('click', async () => {
     if ((document.fullscreenElement || document.webkitFullscreenElement) === box) {
       try { if (document.exitFullscreen) await document.exitFullscreen(); else document.webkitExitFullscreen(); } catch {}
@@ -50,19 +59,24 @@ cinemas.forEach(box => {
     const small = box.classList.toggle('cinema-minimized');
     document.body.style.overflow = small ? previousOverflow : 'hidden';
     document.body.classList.remove('watching-film');
-    minimize.textContent = small ? 'Expand' : 'Minimize';
+    minimize.innerHTML = miniIcon(small);
     minimize.setAttribute('aria-label', small ? 'Expand video' : 'Minimize video and browse');
   });
   function viewing(on) {
     if (on) { previousOverflow = document.body.style.overflow; document.body.append(box); box.classList.add('cinema-viewing'); document.body.style.overflow = 'hidden'; close.focus({preventScroll:true}); }
-    else if (box.classList.contains('cinema-viewing')) { box.classList.remove('cinema-viewing', 'cinema-minimized'); minimize.textContent = 'Minimize'; minimize.setAttribute('aria-label', 'Minimize video and browse'); home.after(box); document.body.style.overflow = previousOverflow; }
+    else if (box.classList.contains('cinema-viewing')) { box.classList.remove('cinema-viewing', 'cinema-minimized'); minimize.innerHTML = miniIcon(false); minimize.setAttribute('aria-label', 'Minimize video and browse'); home.after(box); document.body.style.overflow = previousOverflow; }
   }
+  const canFull = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  if (!canFull) full.hidden = true;
   start.type = 'button';
   [close, play, mute, back, forward, full].forEach(b => { if (b) b.type = 'button'; });
 
   function enable(on) { [play, seek, mute, volume, back, forward].forEach(b => b.disabled = !on); }
+  let noticeTimer;
   function notice(message, opts = {}) {
+    clearTimeout(noticeTimer);
     status.textContent = message; status.hidden = false;
+    if (!opts.retry && !opts.link && !opts.stay) noticeTimer = setTimeout(() => { status.hidden = true; }, 5000);
     if (opts.retry) { const b = document.createElement('button'); b.type = 'button'; b.textContent = tr('Retry playback'); b.onclick = () => { reset(); begin(); }; status.append(b); }
   }
   let videoAreaVisible = false;
@@ -77,24 +91,25 @@ cinemas.forEach(box => {
       tAll.textContent = duration ? time(duration) : '0:00';
       if (!dragging) { tNow.textContent = time(current); seek.value = duration ? current / duration * 100 : 0; seek.style.setProperty('--progress', seek.value + '%'); seek.setAttribute('aria-valuetext', time(current) + ' / ' + time(duration)); }
       const muted = player.isMuted();
-      mute.setAttribute('aria-label', tr(muted ? 'Unmute video' : 'Mute video')); mute.setAttribute('aria-pressed', String(muted)); mute.style.opacity = '1'; mute.textContent = tr(muted ? 'Unmute' : 'Mute');
+      mute.setAttribute('aria-label', tr(muted ? 'Unmute video' : 'Mute video')); mute.setAttribute('aria-pressed', String(muted)); mute.style.opacity = '1'; mute.innerHTML = speakerIcon(muted);
       if (playing && Math.abs(current - lastSaved) > 4) { lastSaved = current; memory.set(key, duration && current > duration - 20 ? 0 : Math.floor(current)); }
     } catch {}
   }
-  function setPlaying(on) { playing = on; box.dataset.playing = String(on); revealControls(); play.textContent = tr(on ? 'Pause' : 'Play'); play.setAttribute('aria-label', tr(on ? 'Pause video' : 'Play video')); }
+  function setPlaying(on) { playing = on; box.dataset.playing = String(on); revealControls(); play.innerHTML = on ? pauseIcon : playIcon; play.setAttribute('aria-label', tr(on ? 'Pause video' : 'Play video')); }
   function reset() {
     if ((document.fullscreenElement || document.webkitFullscreenElement) === box) { try { const result = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen(); result?.catch(() => {}); } catch {} }
     viewing(false); generation++; clearInterval(tick); clearTimeout(watchdog); tick = null;
     try { player?.destroy(); } catch {}
     player = null; ready = false; loading = false; playing = false; duration = 0; dragging = false;
-    mount.replaceChildren(); delete box.dataset.native; poster.hidden = false; videoMode(); close.hidden = true; status.hidden = true; enable(false);
+    mount.replaceChildren(); delete box.dataset.native; delete box.dataset.ready; clearTimeout(soundCheck); poster.hidden = false; videoMode(); close.hidden = true; status.hidden = true; enable(false);
     seek.value = 0; tNow.textContent = '0:00'; tAll.textContent = '0:00'; setPlaying(false); start.disabled = false;
   }
   /* The embed follows the pattern proven on the People for Animals founder films:
      the YouTube frame is created straight from the click (so the browser allows it to start),
      on www.youtube.com, and the API attaches to that frame afterwards to drive the SKP controls. */
-  const touch = matchMedia('(hover: none)').matches;
-  let soundHint = false;
+  const touch = false;                 /* start with sound everywhere; the browser decides, and we fall back to muted */
+  let soundHint = false, soundCheck = null;
+  function mutedFallback() { if (!player) return; try { player.mute(); player.playVideo(); } catch {} soundHint = true; notice(tr('Started with sound off. Tap the speaker to turn it on.')); }
   function embedUrl(driven, startMuted) {
     const at = memory.get(key);
     return 'https://www.youtube.com/embed/' + encodeURIComponent(id) + '?autoplay=1&mute=' + (startMuted ? 1 : 0) + '&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&iv_load_policy=3&fs=' + (driven ? 0 : 1) + (driven ? '&controls=0&disablekb=1' : '') + '&origin=' + encodeURIComponent(location.origin) + (at > 10 ? '&start=' + at : '');
@@ -117,10 +132,12 @@ cinemas.forEach(box => {
       events: {
         onReady: e => {
           if (generation !== thisGeneration) return;
-          clearTimeout(watchdog); ready = true; loading = false; enable(true);
+          clearTimeout(watchdog); ready = true; loading = false; enable(true); box.dataset.ready = 'true';
           try { if (!startMuted) { e.target.unMute(); e.target.setVolume(Number(volume.value) || 80); } e.target.playVideo(); } catch {}
           if (startMuted) { soundHint = true; notice(tr('Started with sound off. Tap the speaker to turn it on.')); } else status.hidden = true;
           tick = setInterval(paint, 500); paint();
+          clearTimeout(soundCheck); soundCheck = setTimeout(() => { if (generation === thisGeneration && !playing && !startMuted) mutedFallback(); }, 2500);
+          revealControls();
         },
         onStateChange: e => {
           if (generation !== thisGeneration) return;
@@ -131,8 +148,7 @@ cinemas.forEach(box => {
         },
         onAutoplayBlocked: () => {
           if (generation !== thisGeneration) return;
-          try { player.mute(); player.playVideo(); } catch {}
-          soundHint = true; notice(tr('Started with sound off. Tap the speaker to turn it on.'));
+          clearTimeout(soundCheck); mutedFallback();
         },
         onError: e => {
           if (generation !== thisGeneration) return;
@@ -175,7 +191,7 @@ cinemas.forEach(box => {
   mute.onclick = () => { if (!ready) return; if (player.isMuted()) { player.unMute(); player.setVolume(Number(volume.value) || 80); soundHint = false; status.hidden = true; } else player.mute(); setTimeout(paint, 120); };
   volume.addEventListener('input', () => { if (!ready) return; player.setVolume(Number(volume.value)); if (Number(volume.value) > 0) player.unMute(); else player.mute(); setTimeout(paint, 120); });
   full.addEventListener('click', async () => {
-    if (box.classList.contains('cinema-minimized')) { box.classList.remove('cinema-minimized'); document.body.style.overflow = 'hidden'; minimize.textContent = 'Minimize'; minimize.setAttribute('aria-label', 'Minimize video and browse'); }
+    if (box.classList.contains('cinema-minimized')) { box.classList.remove('cinema-minimized'); document.body.style.overflow = 'hidden'; minimize.innerHTML = miniIcon(false); minimize.setAttribute('aria-label', 'Minimize video and browse'); }
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else if (document.webkitFullscreenElement) document.webkitExitFullscreen();
@@ -188,18 +204,34 @@ cinemas.forEach(box => {
   function revealControls() {
     clearTimeout(idleTimer);
     box.classList.remove('cinema-controls-hidden');
-    if (box.classList.contains('cinema-fullscreen-active')) {
+    if (box.classList.contains('cinema-viewing') && !box.classList.contains('cinema-minimized')) {
       idleTimer = setTimeout(() => {
         if (box.dataset.playing === 'true' && !box.querySelector('.cinema-top:focus-within, .cinema-controls:focus-within')) box.classList.add('cinema-controls-hidden');
       }, 2600);
     }
   }
-  ['pointermove', 'pointerdown', 'keydown', 'focusin'].forEach(event => box.addEventListener(event, revealControls));
+  ['pointermove', 'pointerdown', 'keydown', 'focusin'].forEach(event => box.addEventListener(event, e => { if (e.target !== tapLayer) revealControls(); }));
+  let lastTap = 0, tapTimer, wasHidden = false;
+  tapLayer.addEventListener('pointerdown', () => { wasHidden = box.classList.contains('cinema-controls-hidden'); });
+  tapLayer.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') revealControls(); });
+  tapLayer.addEventListener('click', e => {
+    if (!ready) return;
+    const now = Date.now();
+    if (now - lastTap < 300) { clearTimeout(tapTimer); lastTap = 0; play.click(); revealControls(); return; }
+    lastTap = now;
+    if (e.pointerType === 'mouse' || !matchMedia('(hover: none)').matches) { play.click(); revealControls(); return; }
+    tapTimer = setTimeout(() => {
+      if (wasHidden) revealControls();
+      else if (playing) { clearTimeout(idleTimer); box.classList.add('cinema-controls-hidden'); }
+      else revealControls();
+    }, 280);
+  });
   const onFs = () => {
     const active = (document.fullscreenElement || document.webkitFullscreenElement) === box;
     box.classList.toggle('cinema-fullscreen-active', active);
     full.setAttribute('aria-label', tr(active ? 'Exit full screen' : 'Enter full screen'));
-    full.textContent = active ? 'Exit fullscreen' : 'Fullscreen';
+    full.innerHTML = fullIcon(active);
+    try { if (active && matchMedia('(max-width: 900px)').matches) screen.orientation?.lock?.('landscape').catch(() => {}); else if (!active) screen.orientation?.unlock?.(); } catch {}
     if (active) full.blur();
     revealControls();
   };

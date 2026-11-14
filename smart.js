@@ -57,7 +57,7 @@ const cart = {
 function paintCart() {
   const n = cart.count();
   $$('[data-cart-count]').forEach(el => { el.textContent = n; el.hidden = !n; });
-  $$('.nav-cart,.cart-fab').forEach(el => el.setAttribute('aria-label', t('Cart') + (n ? ', ' + n : '')));
+  $$('.nav-cart,.cart-fab,.app-cart').forEach(el => el.setAttribute('aria-label', t('Cart') + (n ? ', ' + n : '')));
   const fab = $('.cart-fab'); if (fab) fab.hidden = !n || document.body.dataset.page === '/cart/';
 }
 addEventListener('storage', paintCart);
@@ -80,6 +80,7 @@ function print(html) {
 /* ---------- current page in nav (works with and without index.html) ---------- */
 const norm = p => p.replace(/index\.html$/, '').replace(/\/+$/, '/') || '/';
 $$('.nav-half a').forEach(a => a.classList.toggle('current', norm(a.pathname) === norm(location.pathname)));
+$$('.app-bar a').forEach(a => { if (norm(a.pathname) === norm(location.pathname)) a.setAttribute('aria-current', 'page'); });
 
 /* ---------- search ---------- */
 let searchEl, searchInput, searchList, searchSel = 0, searchLast = null, searchItems = [];
@@ -174,6 +175,15 @@ if (article && $('.article-copy', article)) {
 
 /* ---------- offline and install ---------- */
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register(url('sw.js')).catch(() => {}));
+
+/* ---------- phone bar: out of the way on the first screen, slides in once the visitor scrolls ---------- */
+const appBar = $('.app-bar');
+if (appBar) {
+  let queued = false;
+  const update = () => { queued = false; const de = document.documentElement; document.body.classList.toggle('bar-on', scrollY > innerHeight * .5 || scrollY + innerHeight >= de.scrollHeight - 4 || de.scrollHeight <= innerHeight + 4); };
+  addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(update); } }, { passive: true });
+  addEventListener('resize', update); update();
+}
 
 window.SKPU = { $, $$, esc, store, url, t, lang, cart, toast, print, translateDom, openSearch };
 paintCart();

@@ -1,5 +1,5 @@
 /* SKP offline layer. Pages load from the network first and fall back to the saved copy; images, fonts, styles and scripts are served from the saved copy and refreshed in the background. */
-const VERSION = 'skp-v202611131655';
+const VERSION = 'skp-v202611140906';
 const CORE = ["index.html", "style.css", "app.js", "smart.js", "assist.js", "i18n.js", "commerce.js", "player.js", "data/catalog.js", "data/search-index.js", "vendor/qrcode.js", "assets/fonts/season.woff2", "assets/fonts/condensed.woff2", "assets/fonts/condensed-bold.woff2", "assets/skp-mark.png", "shop/index.html", "cart/index.html", "portal/index.html", "trace/index.html"];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => Promise.allSettled(CORE.map(u => c.add(u)))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

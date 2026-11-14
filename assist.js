@@ -79,14 +79,12 @@ window.SKP_ASK = answer;
 /* ---------- the panel ---------- */
 const SUGGEST = ['Price of W320?', 'Which grade for sweets?', 'Delivery time to Rotterdam?', 'How many cartons in a container?', 'Trace SKP-DEMO-0001', 'Where is my order SKP-EX-1042?'];
 const icon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.5 8.5h7M8.5 11.5h4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-const btn = document.createElement('button');
-btn.type = 'button'; btn.className = 'ask-fab'; btn.setAttribute('aria-haspopup', 'dialog'); btn.setAttribute('aria-expanded', 'false');
-btn.innerHTML = icon + '<span>' + esc(t('Ask SKP')) + '</span>';
 const panel = document.createElement('section');
 panel.className = 'ask-panel'; panel.hidden = true; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', t('Ask SKP'));
 if (U.lang === 'ar') panel.dir = 'rtl';
 panel.innerHTML = `<header><div><b>${esc(t('Ask SKP'))}</b><span>${esc(t('Answers from SKP data, instantly'))}</span></div><button type="button" class="ask-close">${esc(t('Close'))}</button></header><div class="ask-log" role="log" aria-live="polite"></div><div class="ask-suggest"></div><form class="ask-form"><label class="sr-only" for="ask-in">${esc(t('Type your question'))}</label><input id="ask-in" autocomplete="off" placeholder="${esc(t('Type your question'))}" maxlength="200"><button type="submit" aria-label="${esc(t('Send'))}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.6"/></svg></button></form>${D.demo ? `<p class="ask-note">${esc(t('Prices and records shown are demo data.'))}</p>` : ''}`;
-document.body.append(btn, panel);
+document.body.append(panel);
+let opener = null;
 const log = $('.ask-log', panel), input = $('#ask-in', panel), sug = $('.ask-suggest', panel);
 const history = store.get('ask', []);
 function bubble(who, text, links) {
@@ -107,15 +105,16 @@ function ask(qText) {
 }
 function open() {
   if (!log.childElementCount) { bubble('bot', t('Hello. I can answer questions on grades, prices, shipping, lots and orders.')); suggestions(); }
-  panel.hidden = false; btn.setAttribute('aria-expanded', 'true'); document.body.classList.add('ask-open'); input.focus();
+  const mega = document.querySelector('.mega-menu'); if (mega && !mega.hidden) document.querySelector('.menu-close')?.click();
+  opener = document.activeElement; $$('[data-ask]').forEach(b => b.setAttribute('aria-expanded', 'true'));
+  panel.hidden = false; document.body.classList.add('ask-open'); input.focus();
 }
-function close() { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); document.body.classList.remove('ask-open'); btn.focus({ preventScroll: true }); }
-btn.addEventListener('click', () => panel.hidden ? open() : close());
+function close() { panel.hidden = true; $$('[data-ask]').forEach(b => b.setAttribute('aria-expanded', 'false')); document.body.classList.remove('ask-open'); opener?.focus?.({ preventScroll: true }); }
 $('.ask-close', panel).addEventListener('click', close);
 $('.ask-form', panel).addEventListener('submit', e => { e.preventDefault(); const v = input.value; input.value = ''; ask(v); });
 sug.addEventListener('click', e => { const b = e.target.closest('button'); if (b) ask(b.textContent); });
 panel.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
-document.addEventListener('click', e => { const a = e.target.closest('[data-ask]'); if (a) { e.preventDefault(); open(); if (a.dataset.ask) ask(a.dataset.ask); } });
+document.addEventListener('click', e => { const a = e.target.closest('[data-ask]'); if (a) { e.preventDefault(); if (!panel.hidden && !a.dataset.ask) { close(); return; } open(); if (a.dataset.ask) ask(a.dataset.ask); } });
 
 /* ---------- suggest the visitor's own language, once ---------- */
 const LANGS = (window.SKP_I18N || {}).langs || {};
