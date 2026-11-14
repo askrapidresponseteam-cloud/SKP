@@ -30,6 +30,20 @@ cinemas.forEach(box => {
   const q = s => box.querySelector(s), mount = q('.cinema-mount'), poster = q('.cinema-poster'), start = q('.cinema-start'), close = q('.cinema-close'), play = q('.cinema-play'), seek = q('.cinema-seek'), mute = q('.cinema-mute'), volume = q('.cinema-volume'), back = q('.cinema-back'), forward = q('.cinema-forward'), full = q('.cinema-fullscreen'), status = q('.cinema-status'), tNow = q('.cinema-time-current'), tAll = q('.cinema-time-total');
   const id = box.dataset.video, watchUrl = 'https://www.youtube.com/watch?v=' + encodeURIComponent(id), key = 'skp:film:' + id, title = 'Sampath Shetty - Yashogathe by News Next';
   let player = null, ready = false, playing = false, tick = null, loading = false, generation = 0, duration = 0, dragging = false, watchdog = null, lastSaved = 0;
+  // Playback opens in the reference's edge-to-edge black viewing room.
+  const home = document.createComment('film player position');
+  box.before(home);
+  let previousOverflow = '';
+  const controls = q('.cinema-controls'), bar = document.createElement('div'), name = document.createElement('div'), transport = document.createElement('div'), clock = document.createElement('div');
+  bar.className = 'cinema-reference-bar'; name.className = 'cinema-reference-title'; transport.className = 'cinema-reference-transport'; clock.className = 'cinema-reference-clock';
+  name.textContent = 'Sampath Shetty – Yashogathe';
+  clock.append(tNow, document.createTextNode(' / '), tAll);
+  transport.append(play, seek, clock); bar.append(name, transport, mute); controls.append(bar);
+  close.textContent = 'CLOSE';
+  function viewing(on) {
+    if (on) { previousOverflow = document.body.style.overflow; document.body.append(box); box.classList.add('cinema-viewing'); document.body.style.overflow = 'hidden'; close.focus({preventScroll:true}); }
+    else if (box.classList.contains('cinema-viewing')) { box.classList.remove('cinema-viewing'); home.after(box); document.body.style.overflow = previousOverflow; }
+  }
   start.type = 'button';
   [close, play, mute, back, forward, full].forEach(b => { if (b) b.type = 'button'; });
 
@@ -51,13 +65,13 @@ cinemas.forEach(box => {
       tAll.textContent = duration ? time(duration) : '0:00';
       if (!dragging) { tNow.textContent = time(current); seek.value = duration ? current / duration * 100 : 0; seek.style.setProperty('--progress', seek.value + '%'); seek.setAttribute('aria-valuetext', time(current) + ' / ' + time(duration)); }
       const muted = player.isMuted();
-      mute.setAttribute('aria-label', tr(muted ? 'Unmute video' : 'Mute video')); mute.setAttribute('aria-pressed', String(muted)); mute.style.opacity = muted ? '.5' : '1';
+      mute.setAttribute('aria-label', tr(muted ? 'Unmute video' : 'Mute video')); mute.setAttribute('aria-pressed', String(muted)); mute.style.opacity = '1'; mute.textContent = tr(muted ? 'Unmute' : 'Mute');
       if (playing && Math.abs(current - lastSaved) > 4) { lastSaved = current; memory.set(key, duration && current > duration - 20 ? 0 : Math.floor(current)); }
     } catch {}
   }
-  function setPlaying(on) { playing = on; box.dataset.playing = String(on); play.innerHTML = on ? pauseIcon : playIcon; play.setAttribute('aria-label', tr(on ? 'Pause video' : 'Play video')); }
+  function setPlaying(on) { playing = on; box.dataset.playing = String(on); play.textContent = tr(on ? 'Pause' : 'Play'); play.setAttribute('aria-label', tr(on ? 'Pause video' : 'Play video')); }
   function reset() {
-    generation++; clearInterval(tick); clearTimeout(watchdog); tick = null;
+    viewing(false); generation++; clearInterval(tick); clearTimeout(watchdog); tick = null;
     try { player?.destroy(); } catch {}
     player = null; ready = false; loading = false; playing = false; duration = 0; dragging = false;
     mount.replaceChildren(); delete box.dataset.native; poster.hidden = false; videoMode(); close.hidden = true; status.hidden = true; enable(false);
@@ -124,13 +138,13 @@ cinemas.forEach(box => {
     if (ready && player) { player.playVideo(); return; }
     if (!hosted) { notice(tr('You opened this page as a file, and YouTube blocks films on pages opened that way. Double-click Start-Preview.command in the site folder (or open the hosted site) and the film plays right here.'), { link: true }); return; }
     const thisGeneration = ++generation; soundHint = false;
-    start.disabled = true; poster.hidden = true; videoMode(); close.hidden = false;
+    viewing(true); start.disabled = true; poster.hidden = true; videoMode(); close.hidden = false;
     const ambient = document.querySelector('.sound-toggle'); if (ambient?.getAttribute('aria-pressed') === 'true') ambient.click();
     const driven = !!(window.YT && window.YT.Player);
     const frame = makeFrame(driven, touch);
     mount.replaceChildren(frame);
     if (driven) { loading = true; notice(tr('Loading the film')); attach(frame, thisGeneration, touch); }
-    else { box.dataset.native = 'true'; enable(false); status.hidden = true; loadAPI().catch(() => {}); }
+    else { box.dataset.native = 'true'; enable(false); status.hidden = true; loadAPI().then(() => { if (generation === thisGeneration) { delete box.dataset.native; attach(frame, thisGeneration, touch); } }).catch(() => {}); }
   }
   /* fetch the YouTube API as soon as the player is on screen or touched, so the first click can use the SKP controls */
   if (hosted) {
@@ -168,6 +182,7 @@ cinemas.forEach(box => {
     else if (k === 'f') full.click();
     else if (k === 'escape' && !document.fullscreenElement && (ready || box.dataset.native)) reset();
   });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && box.classList.contains('cinema-viewing')) { reset(); start.focus({preventScroll:true}); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden && ready && playing) player.pauseVideo(); });
   addEventListener('pagehide', () => { if (ready) paint(); });
 });
