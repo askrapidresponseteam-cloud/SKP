@@ -81,7 +81,7 @@ cinemas.forEach(box => {
       if (playing && Math.abs(current - lastSaved) > 4) { lastSaved = current; memory.set(key, duration && current > duration - 20 ? 0 : Math.floor(current)); }
     } catch {}
   }
-  function setPlaying(on) { playing = on; box.dataset.playing = String(on); play.textContent = tr(on ? 'Pause' : 'Play'); play.setAttribute('aria-label', tr(on ? 'Pause video' : 'Play video')); }
+  function setPlaying(on) { playing = on; box.dataset.playing = String(on); revealControls(); play.textContent = tr(on ? 'Pause' : 'Play'); play.setAttribute('aria-label', tr(on ? 'Pause video' : 'Play video')); }
   function reset() {
     if ((document.fullscreenElement || document.webkitFullscreenElement) === box) { try { const result = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen(); result?.catch(() => {}); } catch {} }
     viewing(false); generation++; clearInterval(tick); clearTimeout(watchdog); tick = null;
@@ -184,7 +184,25 @@ cinemas.forEach(box => {
       else notice(tr('Full screen is not supported in this browser.'), { link: true });
     } catch { notice(tr('Full screen is not available in this browser.'), { link: true }); }
   });
-  const onFs = () => { const active = (document.fullscreenElement || document.webkitFullscreenElement) === box; full.setAttribute('aria-label', tr(active ? 'Exit full screen' : 'Enter full screen')); full.textContent = active ? 'Exit fullscreen' : 'Fullscreen'; };
+  let idleTimer;
+  function revealControls() {
+    clearTimeout(idleTimer);
+    box.classList.remove('cinema-controls-hidden');
+    if (box.classList.contains('cinema-fullscreen-active')) {
+      idleTimer = setTimeout(() => {
+        if (box.dataset.playing === 'true' && !box.querySelector('.cinema-top:focus-within, .cinema-controls:focus-within')) box.classList.add('cinema-controls-hidden');
+      }, 2600);
+    }
+  }
+  ['pointermove', 'pointerdown', 'keydown', 'focusin'].forEach(event => box.addEventListener(event, revealControls));
+  const onFs = () => {
+    const active = (document.fullscreenElement || document.webkitFullscreenElement) === box;
+    box.classList.toggle('cinema-fullscreen-active', active);
+    full.setAttribute('aria-label', tr(active ? 'Exit full screen' : 'Enter full screen'));
+    full.textContent = active ? 'Exit fullscreen' : 'Fullscreen';
+    if (active) full.blur();
+    revealControls();
+  };
   document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
   box.addEventListener('keydown', e => {
     if (e.target.matches('input,button,a') || e.ctrlKey || e.metaKey || e.altKey) return;
