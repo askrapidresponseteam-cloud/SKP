@@ -867,3 +867,25 @@ img[src$="warehouse.webp"]{--ar:1.7768;--blur:url('assets/blur/warehouse.jpg')}
 @media(max-width:600px){.cinema-viewing .cinema-reference-bar{grid-template-columns:1fr 68px;height:auto}.cinema-viewing .cinema-reference-title{grid-column:1/-1;height:35px;padding:0 12px}.cinema-viewing .cinema-reference-transport{height:44px;padding:0 12px;gap:10px}.cinema-viewing .cinema-close{left:12px;top:30%}.cinema-viewing .cinema-status{left:12px;right:12px;font-size:11px}.cinema-reference-transport .cinema-play{width:36px}}
 
 .cinema:not(.cinema-viewing) .cinema-controls{display:none}
+
+/* Fullscreen control alongside the reference transport. */
+.cinema-viewing .cinema-reference-bar{grid-template-columns:24.8fr 62.7fr 6fr 7fr}
+.cinema-reference-bar>.cinema-fullscreen{background:#1b1b1b;border-radius:5px;color:#eee;font:400 clamp(12px,.83vw,17px)/1.2 Arial,Helvetica,sans-serif;padding:0 12px;min-width:0}
+@media(max-width:600px){.cinema-viewing .cinema-reference-bar{grid-template-columns:minmax(0,1fr) 60px 92px}.cinema-viewing .cinema-reference-title{grid-column:1/-1}.cinema-reference-transport{gap:8px}.cinema-reference-clock{font-size:10px}}
+
+/* Browse while watching without recreating the video iframe. */
+.cinema-minimize{display:none}
+.cinema-viewing .cinema-minimize{display:block;position:absolute;right:17px;top:29%;padding:0;color:#eee;font:400 clamp(12px,.83vw,17px)/1.2 Arial,Helvetica,sans-serif}
+.cinema-viewing.cinema-minimized{inset:auto 18px 18px auto!important;width:min(460px,calc(100vw - 24px))!important;height:340px!important;border:1px solid #333!important;border-radius:8px!important;box-shadow:0 8px 32px #0008!important}
+.cinema-minimized .cinema-top{height:38px}
+.cinema-minimized .cinema-close{left:12px;top:12px;font-size:11px}
+.cinema-minimized .cinema-minimize{right:12px;top:12px;font-size:11px}
+.cinema-minimized .cinema-screen{top:38px;height:calc(100% - 116px)}
+.cinema-minimized .cinema-controls{inset:auto 6px 6px}
+.cinema-viewing.cinema-minimized .cinema-reference-bar{grid-template-columns:minmax(0,1fr) 58px 88px;height:auto;gap:4px}
+.cinema-minimized .cinema-reference-title{grid-column:1/-1;height:26px;font-size:11px;padding:0 8px}
+.cinema-minimized .cinema-reference-transport{height:38px;gap:8px;padding:0 8px;font-size:11px}
+.cinema-minimized .cinema-reference-transport .cinema-play{width:32px}
+.cinema-minimized .cinema-reference-clock{font-size:10px;gap:2px}
+.cinema-minimized .cinema-reference-bar>.cinema-mute,.cinema-minimized .cinema-reference-bar>.cinema-fullscreen{font-size:11px;padding:0 6px}
+@media(max-width:600px){.cinema-viewing.cinema-minimized{right:12px!important;bottom:12px!important;height:290px!important}}

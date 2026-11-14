@@ -36,13 +36,26 @@ cinemas.forEach(box => {
   let previousOverflow = '';
   const controls = q('.cinema-controls'), bar = document.createElement('div'), name = document.createElement('div'), transport = document.createElement('div'), clock = document.createElement('div');
   bar.className = 'cinema-reference-bar'; name.className = 'cinema-reference-title'; transport.className = 'cinema-reference-transport'; clock.className = 'cinema-reference-clock';
-  name.textContent = 'Sampath Shetty – Yashogathe';
+  name.textContent = 'Sampath Shetty - Yashogathe';
   clock.append(tNow, document.createTextNode(' / '), tAll);
-  transport.append(play, seek, clock); bar.append(name, transport, mute); controls.append(bar);
-  close.textContent = 'CLOSE';
+  transport.append(play, seek, clock); bar.append(name, transport, mute, full); controls.append(bar);
+  close.textContent = 'CLOSE'; full.textContent = 'Fullscreen';
+  const minimize = document.createElement('button');
+  minimize.type = 'button'; minimize.className = 'cinema-minimize'; minimize.textContent = 'Minimize'; minimize.setAttribute('aria-label', 'Minimize video and browse');
+  q('.cinema-top').append(minimize);
+  minimize.addEventListener('click', async () => {
+    if ((document.fullscreenElement || document.webkitFullscreenElement) === box) {
+      try { if (document.exitFullscreen) await document.exitFullscreen(); else document.webkitExitFullscreen(); } catch {}
+    }
+    const small = box.classList.toggle('cinema-minimized');
+    document.body.style.overflow = small ? previousOverflow : 'hidden';
+    document.body.classList.remove('watching-film');
+    minimize.textContent = small ? 'Expand' : 'Minimize';
+    minimize.setAttribute('aria-label', small ? 'Expand video' : 'Minimize video and browse');
+  });
   function viewing(on) {
     if (on) { previousOverflow = document.body.style.overflow; document.body.append(box); box.classList.add('cinema-viewing'); document.body.style.overflow = 'hidden'; close.focus({preventScroll:true}); }
-    else if (box.classList.contains('cinema-viewing')) { box.classList.remove('cinema-viewing'); home.after(box); document.body.style.overflow = previousOverflow; }
+    else if (box.classList.contains('cinema-viewing')) { box.classList.remove('cinema-viewing', 'cinema-minimized'); minimize.textContent = 'Minimize'; minimize.setAttribute('aria-label', 'Minimize video and browse'); home.after(box); document.body.style.overflow = previousOverflow; }
   }
   start.type = 'button';
   [close, play, mute, back, forward, full].forEach(b => { if (b) b.type = 'button'; });
@@ -51,10 +64,9 @@ cinemas.forEach(box => {
   function notice(message, opts = {}) {
     status.textContent = message; status.hidden = false;
     if (opts.retry) { const b = document.createElement('button'); b.type = 'button'; b.textContent = tr('Retry playback'); b.onclick = () => { reset(); begin(); }; status.append(b); }
-    if (opts.link) { const a = document.createElement('a'); a.href = watchUrl; a.target = '_blank'; a.rel = 'noopener'; a.className = 'cinema-external'; a.textContent = tr('Watch on YouTube'); status.append(a); }
   }
   let videoAreaVisible = false;
-  function videoMode() { document.body.classList.toggle('watching-film', videoAreaVisible && poster.hidden); }
+  function videoMode() { document.body.classList.toggle('watching-film', videoAreaVisible && poster.hidden && !box.classList.contains('cinema-minimized')); }
   if ('IntersectionObserver' in window) new IntersectionObserver(es => { videoAreaVisible = es[0].intersectionRatio > .3; videoMode(); }, { threshold: [0, .3, .7] }).observe(box);
 
   function paint() {
@@ -71,6 +83,7 @@ cinemas.forEach(box => {
   }
   function setPlaying(on) { playing = on; box.dataset.playing = String(on); play.textContent = tr(on ? 'Pause' : 'Play'); play.setAttribute('aria-label', tr(on ? 'Pause video' : 'Play video')); }
   function reset() {
+    if ((document.fullscreenElement || document.webkitFullscreenElement) === box) { try { const result = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen(); result?.catch(() => {}); } catch {} }
     viewing(false); generation++; clearInterval(tick); clearTimeout(watchdog); tick = null;
     try { player?.destroy(); } catch {}
     player = null; ready = false; loading = false; playing = false; duration = 0; dragging = false;
@@ -125,7 +138,7 @@ cinemas.forEach(box => {
           if (generation !== thisGeneration) return;
           clearTimeout(watchdog); loading = false; enable(false);
           const refused = [101, 150, 153].includes(e.data);
-          const messages = { 2: 'The film could not be loaded. Please try again.', 5: 'Your browser could not play this video. Please retry.', 100: 'This film is currently unavailable from its publisher.', 101: 'This film can only be watched on YouTube.', 150: 'This film can only be watched on YouTube.', 153: 'The video service needs a web address. Open this site from its hosted address, or watch the film directly.' };
+          const messages = { 2: 'The film could not be loaded. Please try again.', 5: 'Your browser could not play this video. Please retry.', 100: 'This film is currently unavailable from its publisher.', 101: 'The publisher has disabled playback on this website.', 150: 'The publisher has disabled playback on this website.', 153: 'The video service needs a web address. Open this site from its hosted address.' };
           notice(tr(messages[e.data] || 'The film could not be played in this browser. Please try again.'), { retry: !refused, link: true });
         }
       }
@@ -162,6 +175,7 @@ cinemas.forEach(box => {
   mute.onclick = () => { if (!ready) return; if (player.isMuted()) { player.unMute(); player.setVolume(Number(volume.value) || 80); soundHint = false; status.hidden = true; } else player.mute(); setTimeout(paint, 120); };
   volume.addEventListener('input', () => { if (!ready) return; player.setVolume(Number(volume.value)); if (Number(volume.value) > 0) player.unMute(); else player.mute(); setTimeout(paint, 120); });
   full.addEventListener('click', async () => {
+    if (box.classList.contains('cinema-minimized')) { box.classList.remove('cinema-minimized'); document.body.style.overflow = 'hidden'; minimize.textContent = 'Minimize'; minimize.setAttribute('aria-label', 'Minimize video and browse'); }
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else if (document.webkitFullscreenElement) document.webkitExitFullscreen();
@@ -170,7 +184,7 @@ cinemas.forEach(box => {
       else notice(tr('Full screen is not supported in this browser.'), { link: true });
     } catch { notice(tr('Full screen is not available in this browser.'), { link: true }); }
   });
-  const onFs = () => full.setAttribute('aria-label', tr((document.fullscreenElement || document.webkitFullscreenElement) === box ? 'Exit full screen' : 'Enter full screen'));
+  const onFs = () => { const active = (document.fullscreenElement || document.webkitFullscreenElement) === box; full.setAttribute('aria-label', tr(active ? 'Exit full screen' : 'Enter full screen')); full.textContent = active ? 'Exit fullscreen' : 'Fullscreen'; };
   document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
   box.addEventListener('keydown', e => {
     if (e.target.matches('input,button,a') || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -183,7 +197,7 @@ cinemas.forEach(box => {
     else if (k === 'escape' && !document.fullscreenElement && (ready || box.dataset.native)) reset();
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && box.classList.contains('cinema-viewing')) { reset(); start.focus({preventScroll:true}); } });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && ready && playing) player.pauseVideo(); });
+  // Switching tabs or applications must not pause playback.
   addEventListener('pagehide', () => { if (ready) paint(); });
 });
 })();
